@@ -25,6 +25,7 @@ import sys
 import json
 import glob
 import time
+import socket
 import smtplib
 import imaplib
 import subprocess
@@ -38,6 +39,19 @@ import gspread
 from update_sheet import get_credentials, col_index_to_letter
 
 load_dotenv()
+
+# The cloud runner has no IPv6; imap.gmail.com / smtp.gmail.com resolve to IPv6
+# first and fail with "[Errno 97] Address family not supported by protocol".
+# Force all DNS resolution to IPv4 so IMAP/SMTP (and Google APIs) connect.
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    results = _orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    return results or _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+
+socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
