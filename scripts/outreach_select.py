@@ -30,6 +30,20 @@ from update_sheet import get_credentials
 ELIGIBLE_WEBSITE_TYPES = {"social_only", "none"}
 ALREADY_HANDLED_STATUSES = {"drafted", "sent", "no_email", "skip"}
 
+# Consumer-facing trades far more often publish a contact e-mail, so they are
+# worked first; B2B/professional offices (accountants, lawyers, real-estate)
+# rarely do and tend to yield no_email, so they sink to the back of the queue.
+HIGH_PRIORITY_KEYWORDS = (
+    "étterem", "vendéglő", "pizzéria", "kávézó", "cukrászda", "büfé", "bisztró",
+    "fodrász", "szépségszalon", "kozmetik", "körömszalon", "masszázs", "szolárium",
+    "fogorvos", "fogászat", "állatorvos", "optika", "gyógyszertár",
+)
+
+
+def industry_priority(industry):
+    text = str(industry).lower()
+    return 0 if any(k in text for k in HIGH_PRIORITY_KEYWORDS) else 1
+
 # Fields the agent needs to find an email, write the email, and fill the page.
 QUEUE_FIELDS = [
     "place_id", "name", "address", "city", "industry",
@@ -75,8 +89,12 @@ def select(sheet_name, output, limit):
         item["_row"] = idx + 2  # 1-based, +1 for header — used for sheet write-back
         eligible.append(item)
 
-    # Oldest first so the backlog drains; missing dates sort last.
-    eligible.sort(key=lambda r: str(records[r["_row"] - 2].get("date_added", "")) or "9999")
+    # Email-rich segments first, then oldest first so the backlog drains evenly
+    # (missing dates sort last).
+    eligible.sort(key=lambda r: (
+        industry_priority(r.get("industry", "")),
+        str(records[r["_row"] - 2].get("date_added", "")) or "9999",
+    ))
 
     queue = eligible[:limit]
 
