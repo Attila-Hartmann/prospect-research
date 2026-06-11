@@ -167,9 +167,12 @@ def open_ws():
 def ensure_columns(ws):
     headers = ws.row_values(1)
     missing = [c for c in OUTREACH_COLS if c not in headers]
-    for i, name in enumerate(missing):
-        ws.update_cell(1, len(headers) + 1 + i, name)
     if missing:
+        new_col_count = len(headers) + len(missing)
+        if new_col_count > ws.col_count:
+            ws.resize(rows=ws.row_count, cols=new_col_count)
+        for i, name in enumerate(missing):
+            ws.update_cell(1, len(headers) + 1 + i, name)
         headers = ws.row_values(1)
     return {name: idx + 1 for idx, name in enumerate(headers)}  # 1-based col index
 
