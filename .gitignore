@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.tmp/
+.env
+service_account.json
+token.json
+pages_repo/
