@@ -4,4 +4,6 @@ __pycache__/
 .env
 service_account.json
 token.json
+gmail_oauth.json
+client_secret*.json
 pages_repo/

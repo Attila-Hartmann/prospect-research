@@ -8,15 +8,20 @@ Inputs: .tmp/prepared/<place_id>/{email.json[, index.html]} produced by the agen
 For each prepared business:
   - no email_address  -> mark row `no_email`, skip (no page, no draft).
   - email_address set -> publish index.html to the GitHub Pages repo, build the
-    final e-mail (insert sample link + append the standard footer), then:
-        SEND_MODE=draft -> IMAP APPEND to the Gmail Drafts folder (review & send by hand)
-        SEND_MODE=auto  -> SMTP send
+    final e-mail (insert sample link + append the standard footer), then via the
+    Gmail REST API (HTTPS — the cloud sandbox blocks IMAP/SMTP ports):
+        SEND_MODE=draft -> users.drafts.create (review & send by hand)
+        SEND_MODE=auto  -> users.messages.send
     Recipient is TEST_RECIPIENT when set (safety override), else email_address.
     Drafts/sends are capped at DAILY_CAP per run.
   - Always write back: outreach_status, email_address, email_source,
     sample_page_url, outreach_date, outreach_notes  (matched by place_id).
 
-Env (see .env.example): GMAIL_ADDRESS, GMAIL_APP_PASSWORD, SEND_MODE, TEST_RECIPIENT,
+Gmail auth: the user's own OAuth refresh token (gmail.compose scope) in
+GMAIL_OAUTH_FILE — a service account can't act on a personal Gmail, and only
+HTTPS/443 is reachable from the cloud.
+
+Env (see .env.example): GMAIL_ADDRESS, GMAIL_OAUTH_FILE, SEND_MODE, TEST_RECIPIENT,
 DAILY_CAP, SHEET_NAME, PAGES_REPO_URL, PAGES_BASE_URL, PREPARED_DIR.
 """
 
@@ -24,25 +29,25 @@ import os
 import sys
 import json
 import glob
-import time
+import base64
 import socket
-import smtplib
-import imaplib
 import subprocess
 import datetime
 from email.message import EmailMessage
 from email.utils import formatdate
 
+import requests
 from dotenv import load_dotenv
 import gspread
+from google.oauth2.credentials import Credentials as UserCredentials
+from google.auth.transport.requests import Request as GoogleAuthRequest
 
 from update_sheet import get_credentials, col_index_to_letter
 
 load_dotenv()
 
-# The cloud runner has no IPv6; imap.gmail.com / smtp.gmail.com resolve to IPv6
-# first and fail with "[Errno 97] Address family not supported by protocol".
-# Force all DNS resolution to IPv4 so IMAP/SMTP (and Google APIs) connect.
+# The cloud runner has no IPv6; google/gmail hosts can resolve to IPv6 first and
+# fail with "[Errno 97]". Force all DNS resolution to IPv4.
 _orig_getaddrinfo = socket.getaddrinfo
 
 
@@ -54,7 +59,8 @@ def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
 socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
+GMAIL_OAUTH_FILE = os.getenv("GMAIL_OAUTH_FILE", "gmail_oauth.json")
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.compose"]
 SEND_MODE = os.getenv("SEND_MODE", "draft").strip().lower()      # draft | auto
 TEST_RECIPIENT = os.getenv("TEST_RECIPIENT", "").strip()
 DAILY_CAP = int(os.getenv("DAILY_CAP", "25"))
@@ -136,35 +142,51 @@ def build_message(to_addr, subject, body, sample_url):
     return msg
 
 
-def find_drafts_mailbox(imap):
-    """Gmail's Drafts folder name is localized ([Gmail]/Drafts vs /Piszkozatok).
-    Locate it by the \\Drafts special-use flag; fall back to the English name."""
-    try:
-        typ, data = imap.list()
-        if typ == "OK":
-            for raw in data:
-                line = raw.decode(errors="ignore")
-                if "\\Drafts" in line:
-                    # name is the last quoted token on the line
-                    return line.split(' "/" ')[-1].strip().strip('"')
-    except Exception as e:
-        print(f"  (drafts mailbox lookup failed: {e})", file=sys.stderr)
-    return "[Gmail]/Drafts"
+# Gmail REST API over HTTPS — the cloud blocks IMAP/SMTP ports, and a service
+# account can't act on a personal Gmail, so we use the user's OAuth refresh token.
+_GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 
-def create_draft(msg):
-    imap = imaplib.IMAP4_SSL("imap.gmail.com")
-    imap.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-    mailbox = find_drafts_mailbox(imap)
-    imap.append(mailbox, "\\Draft", imaplib.Time2Internaldate(time.time()),
-                msg.as_bytes())
-    imap.logout()
+def gmail_access_token():
+    """Load the user's OAuth refresh token and exchange it for an access token."""
+    if not os.path.exists(GMAIL_OAUTH_FILE):
+        raise RuntimeError(f"GMAIL_OAUTH_FILE '{GMAIL_OAUTH_FILE}' not found.")
+    with open(GMAIL_OAUTH_FILE, encoding="utf-8") as f:
+        info = json.load(f)
+    creds = UserCredentials(
+        token=None,
+        refresh_token=info["refresh_token"],
+        client_id=info["client_id"],
+        client_secret=info["client_secret"],
+        token_uri=info.get("token_uri", "https://oauth2.googleapis.com/token"),
+        scopes=GMAIL_SCOPES,
+    )
+    creds.refresh(GoogleAuthRequest())
+    return creds.token
 
 
-def send_now(msg):
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-        smtp.send_message(msg)
+def _gmail_post(path, payload, token):
+    r = requests.post(
+        f"{_GMAIL_API}/{path}",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=30,
+    )
+    if not r.ok:
+        raise RuntimeError(f"Gmail API {path} -> {r.status_code}: {r.text[:300]}")
+    return r.json()
+
+
+def _raw(msg):
+    return base64.urlsafe_b64encode(msg.as_bytes()).decode()
+
+
+def create_draft(msg, token):
+    _gmail_post("drafts", {"message": {"raw": _raw(msg)}}, token)
+
+
+def send_now(msg, token):
+    _gmail_post("messages/send", {"raw": _raw(msg)}, token)
 
 
 # --------------------------------------------------------------------- sheet ---
@@ -214,8 +236,9 @@ def writeback(ws, colmap, rowmap, results):
 
 # ---------------------------------------------------------------------- main ---
 def main():
-    if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
-        print("GMAIL_ADDRESS / GMAIL_APP_PASSWORD not set.", file=sys.stderr)
+    if not GMAIL_ADDRESS or not os.path.exists(GMAIL_OAUTH_FILE):
+        print(f"GMAIL_ADDRESS unset or GMAIL_OAUTH_FILE '{GMAIL_OAUTH_FILE}' missing.",
+              file=sys.stderr)
         sys.exit(1)
 
     today = datetime.date.today().isoformat()
@@ -263,6 +286,8 @@ def main():
     if staged:
         push_pages(staged)
 
+    token = gmail_access_token()  # one access token for the whole batch
+
     for e in capped:
         if e.get("_skip"):
             results.append({
@@ -281,17 +306,17 @@ def main():
 
         try:
             if SEND_MODE == "auto":
-                send_now(msg)
+                send_now(msg, token)
                 status, verb = "sent", "Sent"
             else:
-                create_draft(msg)
+                create_draft(msg, token)
                 status, verb = "drafted", "Drafted"
             print(f"  {verb}: {e['email_address']}  → {recipient}  ({e['_url']})")
             note = e.get("notes", "")
             if TEST_RECIPIENT:
                 note = (note + " | TESZT küldés").strip(" |")
         except Exception as exc:
-            status = "skip"
+            status = "error"  # NOT in ALREADY_HANDLED_STATUSES -> retried next run
             note = f"küldés/draft hiba: {exc}"
             print(f"  ERROR for {e['email_address']}: {exc}", file=sys.stderr)
 
@@ -311,9 +336,10 @@ def main():
     drafted = sum(1 for r in results if r["outreach_status"] in ("drafted", "sent"))
     no_email = sum(1 for r in results if r["outreach_status"] == "no_email")
     skipped = sum(1 for r in results if r["outreach_status"] == "skip")
+    errored = sum(1 for r in results if r["outreach_status"] == "error")
     print(f"\nDone. mode={SEND_MODE} cap={DAILY_CAP} "
           f"| {drafted} {'sent' if SEND_MODE=='auto' else 'drafted'}, "
-          f"{no_email} no_email, {skipped} skipped.")
+          f"{no_email} no_email, {skipped} skipped, {errored} error (will retry).")
 
 
 if __name__ == "__main__":
