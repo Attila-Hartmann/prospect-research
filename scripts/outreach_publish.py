@@ -86,6 +86,11 @@ FOOTER = (
     "Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”, és többé nem írok."
 )
 
+# Accent per page theme (mirrors landing_base.html palettes); used to style the e-mail.
+THEME_ACCENT = {"warm": "#BC4F2A", "luxe": "#9C6B33", "fresh": "#2F6F5E",
+                "sage": "#4A7355", "rose": "#B85C6E"}
+DEFAULT_ACCENT = "#2F6F5E"
+
 
 # ---------------------------------------------------------------- pages repo ---
 def git(*args, cwd=PAGES_CLONE):
@@ -126,19 +131,100 @@ def push_pages(n):
 
 
 # -------------------------------------------------------------------- e-mail ---
-def build_message(to_addr, subject, body, sample_url):
+import re
+import html as _html
+
+
+def page_style_from_html(html_text):
+    """Derive (accent, banner_url) from a generated landing page so the e-mail
+    matches it. Falls back to default accent / no banner."""
+    # match the <body data-theme="..."> attribute, NOT the CSS rules (body[data-theme="warm"]{...})
+    m = re.search(r'<body[^>]*\bdata-theme="(\w+)"', html_text or "")
+    accent = THEME_ACCENT.get(m.group(1) if m else "", DEFAULT_ACCENT)
+    b = re.search(r"hero-bg[^>]*background-image:url\('([^']+)'\)", html_text or "")
+    banner = None
+    if b:
+        banner = b.group(1).split("?")[0] + "?auto=format&fit=crop&w=600&h=260&q=70"
+    return accent, banner
+
+
+def extract_page_style(index_html_path):
+    try:
+        with open(index_html_path, encoding="utf-8") as f:
+            return page_style_from_html(f.read())
+    except OSError:
+        return DEFAULT_ACCENT, None
+
+
+def _paragraphs(text):
+    blocks = [b.strip() for b in (text or "").strip().split("\n\n") if b.strip()]
+    return "".join(
+        f'<p style="margin:0 0 16px;">{_html.escape(b).replace(chr(10), "<br>")}</p>'
+        for b in blocks
+    )
+
+
+def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
+    """Email-safe HTML (600px table, inline CSS, web-safe fonts, bulletproof button).
+    The body is split on the {{SAMPLE_PAGE_URL}} token; the button takes its place."""
+    before, _, after = body.partition("{{SAMPLE_PAGE_URL}}")
+    banner_row = (
+        f'<tr><td style="padding:0;"><img src="{banner_url}" width="600" alt="" '
+        f'style="display:block;width:100%;max-width:600px;height:auto;border:0;"></td></tr>'
+        if banner_url else ""
+    )
+    after_row = (
+        f'<tr><td style="padding:0 28px 8px;color:#33312e;font-size:16px;line-height:1.6;'
+        f'font-family:Arial,Helvetica,sans-serif;">{_paragraphs(after)}</td></tr>'
+        if after.strip() else ""
+    )
+    return f"""<!doctype html><html lang="hu"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1efe9;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1efe9;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e7e3da;">
+  <tr><td style="background:{accent};padding:15px 28px;font-family:Georgia,'Times New Roman',serif;">
+    <table role="presentation" width="100%"><tr>
+      <td style="color:#fff;font-size:16px;font-weight:bold;">
+        <span style="display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;background:rgba(255,255,255,.2);border-radius:50%;font-size:12px;margin-right:9px;vertical-align:middle;">HA</span>Hartmann Attila</td>
+      <td align="right" style="color:rgba(255,255,255,.88);font-size:12px;font-family:Arial,sans-serif;">webfejlesztő</td>
+    </tr></table></td></tr>
+  {banner_row}
+  <tr><td style="padding:30px 28px 6px;color:#33312e;font-size:16px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">{_paragraphs(before)}</td></tr>
+  <tr><td align="center" style="padding:12px 28px 28px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="border-radius:10px;background:{accent};">
+        <a href="{sample_url}" target="_blank" style="display:inline-block;padding:15px 32px;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;">Megnézem a mintaoldalt →</a>
+      </td></tr></table></td></tr>
+  {after_row}
+  <tr><td style="padding:22px 28px;background:#faf8f4;border-top:1px solid #eee7db;color:#8a857c;font-size:13px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">
+    <strong style="color:#33312e;">Hartmann Attila</strong> · webfejlesztő<br>
+    ✉ <a href="mailto:{GMAIL_ADDRESS}" style="color:{accent};text-decoration:none;">{GMAIL_ADDRESS}</a>
+    &nbsp;·&nbsp; <a href="https://attila-hartmann.github.io/attila-website/?lang=hu" style="color:{accent};text-decoration:none;">Portfólió</a>
+    &nbsp;·&nbsp; <a href="https://www.linkedin.com/in/attila-hartmann-b7b41a24b/" style="color:{accent};text-decoration:none;">LinkedIn</a>
+    <br><br><span style="color:#a9a399;font-size:12px;">Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz. Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”, és többé nem írok.</span>
+  </td></tr>
+</table>
+<div style="color:#b8b2a8;font-size:11px;margin-top:14px;font-family:Arial,sans-serif;">Fotó: Unsplash</div>
+</td></tr></table></body></html>"""
+
+
+def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
+    # plain-text part (fallback + deliverability)
     if "{{SAMPLE_PAGE_URL}}" in body:
-        body = body.replace("{{SAMPLE_PAGE_URL}}", sample_url)
+        text_body = body.replace("{{SAMPLE_PAGE_URL}}", sample_url)
     else:
-        body = body.rstrip() + f"\n\nMintaoldal: {sample_url}"
-    body += FOOTER
+        text_body = body.rstrip() + f"\n\nMintaoldal: {sample_url}"
+    text_body += FOOTER
 
     msg = EmailMessage()
     msg["From"] = SENDER
     msg["To"] = to_addr
     msg["Subject"] = subject
     msg["Date"] = formatdate(localtime=True)
-    msg.set_content(body)
+    msg.set_content(text_body)
+    msg.add_alternative(render_email_html(body, sample_url, accent, banner_url), subtype="html")
     return msg
 
 
@@ -302,7 +388,8 @@ def main():
         subject = e["subject"]
         if TEST_RECIPIENT:
             subject = f"[TESZT → {e['email_address']}] {subject}"
-        msg = build_message(recipient, subject, e["body"], e["_url"])
+        accent, banner = extract_page_style(os.path.join(e["_dir"], "index.html"))
+        msg = build_message(recipient, subject, e["body"], e["_url"], accent, banner)
 
         try:
             if SEND_MODE == "auto":
