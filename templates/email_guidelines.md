@@ -64,7 +64,7 @@ Hartmann Attila · webfejlesztő
 LinkedIn: https://www.linkedin.com/in/attila-hartmann-b7b41a24b/
 
 Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz.
-Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”, és többé nem írok.
+Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”.
 ```
 
 ## Worked example (body)
