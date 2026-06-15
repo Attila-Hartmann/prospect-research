@@ -247,7 +247,7 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
     ✉ <a href="mailto:{GMAIL_ADDRESS}" style="color:{accent};text-decoration:none;">{GMAIL_ADDRESS}</a>
     &nbsp;·&nbsp; <a href="https://attila-hartmann.github.io/attila-website/?lang=hu" style="color:{accent};text-decoration:none;">Portfólió</a>
     &nbsp;·&nbsp; <a href="https://www.linkedin.com/in/attila-hartmann-b7b41a24b/" style="color:{accent};text-decoration:none;">LinkedIn</a>
-    <br><br><span style="color:#a9a399;font-size:12px;">Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz. Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”, és többé nem írok.</span>
+    <br><br><span style="color:#a9a399;font-size:12px;">Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz. Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”.</span>
   </td></tr>
 </table>
 <div style="color:#b8b2a8;font-size:11px;margin-top:14px;font-family:Arial,sans-serif;">Fotó: Unsplash</div>
