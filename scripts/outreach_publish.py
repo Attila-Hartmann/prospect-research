@@ -83,7 +83,7 @@ FOOTER = (
     f"✉ {GMAIL_ADDRESS}   ·   Portfólió: https://attila-hartmann.github.io/attila-website/?lang=hu\n"
     "LinkedIn: https://www.linkedin.com/in/attila-hartmann-b7b41a24b/\n\n"
     "Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz. "
-    "Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”, és többé nem írok."
+    "Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”."
 )
 
 # Accent per page theme (mirrors landing_base.html palettes); used to style the e-mail.
@@ -96,9 +96,9 @@ LINKEDIN_URL = "https://www.linkedin.com/in/attila-hartmann-b7b41a24b/"
 # Static value-props shown under the CTA (ownership / no-lock-in emphasized).
 PITCH_BULLETS = [
     ("🎨", "Teljesen egyedi, mobilbarát weboldal — az Ön arculatára szabva"),
-    ("🔑", "<strong>A domain, a tárhely és a forráskód is az Öné</strong> — semmilyen függőség a fejlesztőtől"),
+    ("🔑", "<strong>A domain, a tárhely és a forráskód is az Öné</strong> — nem függ a fejlesztőtől"),
     ("💰", "Átlátható, megfizethető árazás — rejtett költségek nélkül"),
-    ("⚡", "Gyors elkészítés, és utána is elérhető vagyok, ha módosítani kell"),
+    ("⚡", "Gyors elkészítés, és utána is elérhető vagyok, ha bármit módosítani kell"),
 ]
 
 
