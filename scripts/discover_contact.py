@@ -23,8 +23,22 @@ Usable as a library (import discover) or CLI:
 import re
 import sys
 import json
+import socket
 import argparse
 import requests
+
+# The cloud runner has no IPv6; dns.google / r.jina.ai can resolve to IPv6 first and
+# fail with "[Errno 97]". Force IPv4 (select.py does not import outreach_publish, so
+# its patch would not apply here).
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    results = _orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    return results or _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+
+socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
