@@ -72,20 +72,16 @@ Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás
 Tisztelt Kovács Fogászat!
 
 Rákerestem Önökre, és a 4,8 csillagos, 132 értékelésből álló Google-profil
-alapján látszik, hogy sok páciens elégedett a budapesti rendelővel.
+alapján látszik, hogy sok páciens elégedett a rendelőjük szolgáltatásaival.
 
-Egy dolog viszont feltűnt: nincs saját weboldaluk. Aki ma fogorvost keres,
-előbb rákeres a neten – weboldal nélkül viszont könnyen egy versenytársnál köt
-ki, pedig az Önök munkája és értékelései meggyőzőbbek lennének.
+Egy dolog viszont feltűnt: nincsen saját weboldaluk. A legtöbb új vendég ma már online tájékozódik, mielőtt időpontot foglal. Egy modern weboldal segíthet abban, hogy könnyebben megtalálják Önöket, és nagyobb bizalommal jelentkezzenek be.
 
-Egy egyszerű, mobilbarát oldal segítene: megjelennének a Google-keresésben,
-a páciensek 0–24-ben tájékozódhatnának, és akár online is időpontot kérhetnének.
+Egy egyszerű, mobilra optimalizált weboldal segíthetne Önöknek abban, hogy megjelenjenek a Google-keresésekben és így a páciensek könnyebben megtalálják Önöket, gyorsan áttekinthetőek legyenek a szolgáltatások, és az érdeklődők egyszerűbben kapcsolatba léphessenek Önökkel.
 
-Hogy ne csak beszéljek róla, készítettem Önöknek egy ingyenes mintaoldalt – itt
+Hogy ne csak beszéljek róla, készítettem Önöknek egy ingyenes mintaoldalt, hogy lássák, hogyan nézhetne ki egy modern weboldal az Önök számára – itt
 megnézhetik, kötelezettség nélkül:
 
 {{SAMPLE_PAGE_URL}}
 
-Ha érdekesnek találják, szívesen beszélgetnék róla 15 percben, vagy válaszol egy
-sort erre a levélre. Ha nem aktuális, az is teljesen rendben.
+Ha úgy érzik, hogy egy modernebb online megjelenés hasznos lenne a vállalkozásuk számára, kérem válaszoljanak erre az e-mailre, és szívesen megmutatom, hogy milyen lehetőségeket látok. Egy rövid, kötelezettségmentes konzultáció keretében át tudjuk beszélni az elképzeléseiket és a lehetőségeket. Ha most nem aktuális, természetesen nem szükséges reagálniuk.
 ```
