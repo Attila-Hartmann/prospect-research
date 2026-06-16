@@ -262,6 +262,36 @@ def select_free_domains(stems):
     return free
 
 
+# Fallback domain stems derived from the business name, used when the agent did
+# not supply domain_candidates (agent-written stems are preferred when present).
+_HU_MAP = str.maketrans({
+    "á": "a", "é": "e", "í": "i", "ó": "o", "ö": "o", "ő": "o", "ú": "u", "ü": "u", "ű": "u",
+    "Á": "a", "É": "e", "Í": "i", "Ó": "o", "Ö": "o", "Ő": "o", "Ú": "u", "Ü": "u", "Ű": "u",
+})
+_STEM_STOPWORDS = {"a", "az", "es", "dr", "kft", "bt", "zrt", "nyrt", "ev", "co", "ltd", "the", "kkt"}
+
+
+def _ascii_words(text):
+    words = re.findall(r"[a-z0-9]+", (text or "").translate(_HU_MAP).lower())
+    return [w for w in words if w not in _STEM_STOPWORDS and len(w) > 1]
+
+
+def _derive_stems(name, city):
+    """Brandable lowercase-ASCII stems from a business name/town (fallback only)."""
+    nw, cw = _ascii_words(name), _ascii_words(city)
+    stems = []
+    for s in (
+        "".join(nw),                                  # full name
+        ("".join(nw) + cw[0]) if (nw and cw) else "",  # name + town
+        "".join(nw[:2]),                              # first two words
+        (nw[0] + cw[0]) if (nw and cw) else "",        # first word + town
+        nw[0] if nw else "",                          # first word
+    ):
+        if s and s not in stems:
+            stems.append(s)
+    return stems[:6]
+
+
 def _domain_card(accent, domains):
     """Card listing confirmed-free domains (mirrors _pitch_card). Empty -> no card."""
     if not domains:
@@ -463,6 +493,16 @@ def writeback(ws, colmap, rowmap, results):
         print(f"Wrote back {len(results)} rows ({len(batch)} cells).")
 
 
+def load_queue_map():
+    """place_id -> business record from .tmp/queue.json (for fallback domain stems)."""
+    qpath = os.path.join(os.path.dirname(PREPARED_DIR) or ".", "queue.json")
+    try:
+        with open(qpath, encoding="utf-8") as f:
+            return {str(it.get("place_id", "")): it for it in json.load(f)}
+    except (OSError, ValueError):
+        return {}
+
+
 # ---------------------------------------------------------------------- main ---
 def main():
     if not GMAIL_ADDRESS or not os.path.exists(GMAIL_OAUTH_FILE):
@@ -471,6 +511,7 @@ def main():
         sys.exit(1)
 
     today = datetime.date.today().isoformat()
+    queue_by_id = load_queue_map()  # business facts for fallback domain stems
     dirs = sorted(glob.glob(os.path.join(PREPARED_DIR, "*")))
     if not dirs:
         print(f"No prepared businesses in {PREPARED_DIR}.")
@@ -533,7 +574,11 @@ def main():
         if TEST_RECIPIENT:
             subject = f"[TESZT → {e['email_address']}] {subject}"
         accent, banner = extract_page_style(os.path.join(e["_dir"], "index.html"))
-        domains = select_free_domains(e.get("domain_candidates", []) or [])
+        stems = e.get("domain_candidates") or []
+        if not stems:  # fallback: derive from the business name in the queue
+            biz = queue_by_id.get(e["place_id"], {})
+            stems = _derive_stems(biz.get("name", ""), biz.get("city", ""))
+        domains = select_free_domains(stems)
         msg = build_message(recipient, subject, e["body"], e["_url"], accent, banner, domains)
 
         try:
