@@ -74,7 +74,7 @@ SENDER = f"Hartmann Attila <{GMAIL_ADDRESS}>"
 
 OUTREACH_COLS = [
     "outreach_status", "email_address", "email_source",
-    "sample_page_url", "outreach_date", "outreach_notes",
+    "sample_page_url", "outreach_date", "outreach_notes", "suggested_domains",
 ]
 
 FOOTER = (
@@ -100,6 +100,14 @@ PITCH_BULLETS = [
     ("💰", "<strong>Átlátható árazás, egyszeri díj</strong> — rejtett költségek és kellemetlen meglepetések nélkül"),
     ("⚡", "<strong>Gyors elkészítés és hosszú távú támogatás</strong> — ha később módosításra vagy segítségre van szükség, továbbra is számíthatnak rám"),
 ]
+
+# Domain-suggestion settings. .com/.net are checked free via Verisign RDAP; .hu
+# (and any other TLD) needs the WhoisJSON HTTPS API — there is no free RDAP for .hu.
+WHOISJSON_API_KEY = os.getenv("WHOISJSON_API_KEY", "").strip()
+DOMAIN_TLDS = ["hu", "com"]      # priority order: .hu first (HU SMBs want it), then .com
+MAX_DOMAIN_OPTIONS = 3           # show at most this many confirmed-free domains
+MAX_DOMAIN_LOOKUPS = 8           # cap availability checks per business (quota guard)
+_RDAP_TLDS = {"com", "net"}      # free Verisign RDAP coverage
 
 
 # ---------------------------------------------------------------- pages repo ---
@@ -194,7 +202,87 @@ def _pitch_card(accent):
     )
 
 
-def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
+def domain_is_free(fqdn):
+    """True = available, False = taken, None = unknown. NEVER claim free on None.
+    .com/.net via free Verisign RDAP (404=free, 200=taken); other TLDs (.hu) via the
+    WhoisJSON HTTPS API (needs WHOISJSON_API_KEY)."""
+    tld = fqdn.rsplit(".", 1)[-1].lower()
+    try:
+        if tld in _RDAP_TLDS:
+            r = requests.get(f"https://rdap.verisign.com/{tld}/v1/domain/{fqdn}", timeout=8)
+            if r.status_code == 404:
+                return True
+            if r.status_code == 200:
+                return False
+            return None
+        if not WHOISJSON_API_KEY:
+            return None  # no key -> cannot verify .hu, treat as unknown
+        r = requests.get(
+            "https://api.whoisjson.com/v1/domain-availability",
+            params={"domain": fqdn},
+            headers={"Authorization": f"TOKEN={WHOISJSON_API_KEY}"},
+            timeout=8,
+        )
+        if not r.ok:
+            return None
+        data = r.json()
+        for key in ("available", "isAvailable", "domainAvailability"):
+            if key in data:
+                v = data[key]
+                if isinstance(v, bool):
+                    return v
+                if isinstance(v, str):
+                    return v.strip().lower() in ("available", "true", "free", "yes")
+        return None
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def select_free_domains(stems):
+    """Check candidate stems across DOMAIN_TLDS and return up to MAX_DOMAIN_OPTIONS
+    confirmed-free FQDNs, preferring .hu. Caps total lookups to guard the API quota."""
+    free, lookups = [], 0
+    for tld in DOMAIN_TLDS:                  # .hu checked before .com -> .hu preferred
+        for stem in stems:
+            if len(free) >= MAX_DOMAIN_OPTIONS or lookups >= MAX_DOMAIN_LOOKUPS:
+                return free
+            stem = (stem or "").strip().lower()
+            if not stem:
+                continue
+            fqdn = f"{stem}.{tld}"
+            if fqdn in free:
+                continue
+            lookups += 1
+            if domain_is_free(fqdn) is True:
+                free.append(fqdn)
+    return free
+
+
+def _domain_card(accent, domains):
+    """Card listing confirmed-free domains (mirrors _pitch_card). Empty -> no card."""
+    if not domains:
+        return ""
+    rows = "".join(
+        f'<tr><td width="24" style="font-size:15px;vertical-align:top;line-height:1.5;padding-bottom:8px;color:{accent};">✓</td>'
+        f'<td style="font-size:15px;color:#33312e;line-height:1.5;padding-bottom:8px;font-family:Arial,Helvetica,sans-serif;">'
+        f'<strong>{_html.escape(d)}</strong></td></tr>'
+        for d in domains
+    )
+    return (
+        f'<tr><td style="padding:6px 28px 10px;">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="background:#f7f4ef;border-left:3px solid {accent};border-radius:10px;"><tr>'
+        f'<td style="padding:18px 22px;">'
+        f'<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:15px;font-weight:bold;'
+        f'color:#33312e;margin-bottom:12px;">Néhány szabad domainnév, ami az Öné lehet:</div>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
+        f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#a9a399;margin-top:10px;">'
+        f'(a levél írásakor ezek a domainek szabadok voltak)</div>'
+        f'</td></tr></table></td></tr>'
+    )
+
+
+def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, domains=None):
     """Email-safe HTML (600px table, inline CSS, web-safe fonts, bulletproof button).
     The body is split on the {{SAMPLE_PAGE_URL}} token; the button takes its place."""
     before, _, after = body.partition("{{SAMPLE_PAGE_URL}}")
@@ -241,6 +329,7 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
         <a href="{sample_url}" target="_blank" style="display:inline-block;padding:15px 32px;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;">Megnézem a mintaoldalt →</a>
       </td></tr></table></td></tr>
   {_pitch_card(accent)}
+  {_domain_card(accent, domains or [])}
   {after_row}
   <tr><td style="padding:22px 28px;background:#faf8f4;border-top:1px solid #eee7db;color:#8a857c;font-size:13px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">
     <strong style="color:#33312e;">Hartmann Attila</strong> · webfejlesztő<br>
@@ -254,12 +343,17 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
 </td></tr></table></body></html>"""
 
 
-def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT, banner_url=None):
+def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT,
+                  banner_url=None, domains=None):
     # plain-text part (fallback + deliverability)
     if "{{SAMPLE_PAGE_URL}}" in body:
         text_body = body.replace("{{SAMPLE_PAGE_URL}}", sample_url)
     else:
         text_body = body.rstrip() + f"\n\nMintaoldal: {sample_url}"
+    if domains:
+        text_body += ("\n\nNéhány szabad domainnév, ami az Öné lehet:\n"
+                      + "\n".join(f"  ✓ {d}" for d in domains)
+                      + "\n(a levél írásakor ezek a domainek szabadok voltak)")
     text_body += FOOTER
 
     msg = EmailMessage()
@@ -268,7 +362,8 @@ def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT, ban
     msg["Subject"] = subject
     msg["Date"] = formatdate(localtime=True)
     msg.set_content(text_body)
-    msg.add_alternative(render_email_html(body, sample_url, accent, banner_url), subtype="html")
+    msg.add_alternative(render_email_html(body, sample_url, accent, banner_url, domains),
+                        subtype="html")
     return msg
 
 
@@ -392,6 +487,7 @@ def main():
                 "email_address": "", "email_source": e.get("email_source", ""),
                 "sample_page_url": "", "outreach_date": today,
                 "outreach_notes": e.get("notes", "nem található e-mail cím"),
+                "suggested_domains": "",
             })
         else:
             e["_dir"] = d
@@ -424,7 +520,7 @@ def main():
                 "place_id": e["place_id"], "outreach_status": "skip",
                 "email_address": e["email_address"], "email_source": e.get("email_source", ""),
                 "sample_page_url": "", "outreach_date": today,
-                "outreach_notes": e["_skip"],
+                "outreach_notes": e["_skip"], "suggested_domains": "",
             })
             continue
 
@@ -433,7 +529,8 @@ def main():
         if TEST_RECIPIENT:
             subject = f"[TESZT → {e['email_address']}] {subject}"
         accent, banner = extract_page_style(os.path.join(e["_dir"], "index.html"))
-        msg = build_message(recipient, subject, e["body"], e["_url"], accent, banner)
+        domains = select_free_domains(e.get("domain_candidates", []) or [])
+        msg = build_message(recipient, subject, e["body"], e["_url"], accent, banner, domains)
 
         try:
             if SEND_MODE == "auto":
@@ -455,7 +552,7 @@ def main():
             "place_id": e["place_id"], "outreach_status": status,
             "email_address": e["email_address"], "email_source": e.get("email_source", ""),
             "sample_page_url": e["_url"], "outreach_date": today,
-            "outreach_notes": note,
+            "outreach_notes": note, "suggested_domains": ", ".join(domains),
         })
 
     # Single batched write-back.

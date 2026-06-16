@@ -47,9 +47,15 @@ offering to help a business with a great reputation but no proper website.
   "email_source": "facebook",              // facebook|instagram|websearch|manual|""
   "subject": "…",
   "body": "…multi-line Hungarian text, contains the {{SAMPLE_PAGE_URL}} token…",
-  "notes": "FB About oldalon találtam / nem volt e-mail, csak telefon"
+  "notes": "FB About oldalon találtam / nem volt e-mail, csak telefon",
+  "domain_candidates": ["kovacsfogaszat", "drkovacs", "kovacsfogaszatbudapest", "kovacsdental"]
 }
 ```
+- **`domain_candidates`** — 4–6 brandable domain *stems* (no TLD, no dot) derived from
+  the business name / field / town, so the publish script can check which are free and show
+  2–3 "ez lehetne az Öné" options. Rules: **lowercase ASCII only**, Hungarian accents
+  transliterated (á→a, é→e, í→i, ó/ö/ő→o, ú/ü/ű→u), no spaces/punctuation. Order best first.
+  Do **NOT** mention domains in the body prose — the script renders them in a separate card.
 - If **no e-mail** was found: still write email.json with `email_address: ""`,
   fill `notes` with where you looked, and do **not** build an index.html. The
   publish script will mark the row `no_email` and skip it.
