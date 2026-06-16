@@ -96,7 +96,7 @@ LINKEDIN_URL = "https://www.linkedin.com/in/attila-hartmann-b7b41a24b/"
 # Static value-props shown under the CTA (ownership / no-lock-in emphasized).
 PITCH_BULLETS = [
     ("🎨", "<strong>Egyedi, mobilbarát weboldal</strong> — az Önök arculatára szabva, hogy bizalmat keltsen már az első látogatáskor"),
-    ("🔑", "<strong>A domain, a tárhely és a weboldal teljes egészében az Önök tulajdona</strong> — nincsek kiszolgáltatva egy fejlesztőnek"),
+    ("🔑", "<strong>A domain, a tárhely és a weboldal teljes egészében az Önök tulajdona</strong> — nincsenek kiszolgáltatva egy fejlesztőnek"),
     ("💰", "<strong>Átlátható árazás, egyszeri díj</strong> — rejtett költségek és kellemetlen meglepetések nélkül"),
     ("⚡", "<strong>Gyors elkészítés és hosszú távú támogatás</strong> — ha később módosításra vagy segítségre van szükség, továbbra is számíthatnak rám"),
 ]
