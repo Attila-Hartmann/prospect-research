@@ -101,13 +101,15 @@ PITCH_BULLETS = [
     ("⚡", "<strong>Gyors elkészítés és hosszú távú támogatás</strong> — ha később módosításra vagy segítségre van szükség, továbbra is számíthatnak rám"),
 ]
 
-# Domain-suggestion settings. .com/.net are checked free via Verisign RDAP; .hu
-# (and any other TLD) needs the WhoisJSON HTTPS API — there is no free RDAP for .hu.
-WHOISJSON_API_KEY = os.getenv("WHOISJSON_API_KEY", "").strip()
+# Domain-suggestion settings. .com/.net are verified authoritatively via free
+# Verisign RDAP. .hu has no free RDAP (and WhoisJSON returns a generic "ACTIVE"
+# stub for every .hu, so it can't tell free from taken) — so .hu is checked via
+# DNS-over-HTTPS: no NS/SOA records => the name isn't delegated => almost
+# certainly unregistered. Both paths are HTTPS-only (cloud-safe) and need no key.
 DOMAIN_TLDS = ["hu", "com"]      # priority order: .hu first (HU SMBs want it), then .com
-MAX_DOMAIN_OPTIONS = 3           # show at most this many confirmed-free domains
-MAX_DOMAIN_LOOKUPS = 8           # cap availability checks per business (quota guard)
-_RDAP_TLDS = {"com", "net"}      # free Verisign RDAP coverage
+MAX_DOMAIN_OPTIONS = 3           # show at most this many free domains
+MAX_DOMAIN_LOOKUPS = 10          # cap availability checks per business
+_RDAP_TLDS = {"com", "net"}      # free, authoritative Verisign RDAP coverage
 
 
 # ---------------------------------------------------------------- pages repo ---
@@ -202,40 +204,42 @@ def _pitch_card(accent):
     )
 
 
+def _doh_registered(fqdn):
+    """DNS-over-HTTPS lookup. True = has NS/SOA (registered/delegated),
+    False = NXDOMAIN (not in DNS => unregistered), None = ambiguous (e.g. SERVFAIL).
+    Google DoH Status: 0=NOERROR, 2=SERVFAIL, 3=NXDOMAIN."""
+    for rtype in ("NS", "SOA"):
+        try:
+            j = requests.get("https://dns.google/resolve",
+                             params={"name": fqdn, "type": rtype}, timeout=8).json()
+        except (requests.RequestException, ValueError):
+            return None
+        status = j.get("Status")
+        if status == 0 and j.get("Answer"):
+            return True            # delegated -> registered
+        if status == 3:
+            return False           # NXDOMAIN -> unregistered
+        # status 2 / NOERROR-without-answer -> inconclusive, try the next record type
+    return None
+
+
 def domain_is_free(fqdn):
     """True = available, False = taken, None = unknown. NEVER claim free on None.
-    .com/.net via free Verisign RDAP (404=free, 200=taken); other TLDs (.hu) via the
-    WhoisJSON HTTPS API (needs WHOISJSON_API_KEY)."""
+    .com/.net via free Verisign RDAP (authoritative); .hu (+ other ccTLDs) via
+    DNS-over-HTTPS (no NS/SOA => almost certainly unregistered)."""
     tld = fqdn.rsplit(".", 1)[-1].lower()
-    try:
-        if tld in _RDAP_TLDS:
+    if tld in _RDAP_TLDS:
+        try:
             r = requests.get(f"https://rdap.verisign.com/{tld}/v1/domain/{fqdn}", timeout=8)
             if r.status_code == 404:
                 return True
             if r.status_code == 200:
                 return False
             return None
-        if not WHOISJSON_API_KEY:
-            return None  # no key -> cannot verify .hu, treat as unknown
-        r = requests.get(
-            "https://api.whoisjson.com/v1/domain-availability",
-            params={"domain": fqdn},
-            headers={"Authorization": f"TOKEN={WHOISJSON_API_KEY}"},
-            timeout=8,
-        )
-        if not r.ok:
+        except requests.RequestException:
             return None
-        data = r.json()
-        for key in ("available", "isAvailable", "domainAvailability"):
-            if key in data:
-                v = data[key]
-                if isinstance(v, bool):
-                    return v
-                if isinstance(v, str):
-                    return v.strip().lower() in ("available", "true", "free", "yes")
-        return None
-    except (requests.RequestException, ValueError):
-        return None
+    reg = _doh_registered(fqdn)
+    return None if reg is None else (not reg)
 
 
 def select_free_domains(stems):
@@ -274,10 +278,10 @@ def _domain_card(accent, domains):
         f'style="background:#f7f4ef;border-left:3px solid {accent};border-radius:10px;"><tr>'
         f'<td style="padding:18px 22px;">'
         f'<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:15px;font-weight:bold;'
-        f'color:#33312e;margin-bottom:12px;">Néhány szabad domainnév, ami az Öné lehet:</div>'
+        f'color:#33312e;margin-bottom:12px;">Néhány szabad domain név, ami az Öné lehet:</div>'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
         f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#a9a399;margin-top:10px;">'
-        f'(a levél írásakor ezek a domainek szabadok voltak)</div>'
+        f'(ezek a domain nevek a levél írásakor szabadnak tűntek)</div>'
         f'</td></tr></table></td></tr>'
     )
 
@@ -351,9 +355,9 @@ def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT,
     else:
         text_body = body.rstrip() + f"\n\nMintaoldal: {sample_url}"
     if domains:
-        text_body += ("\n\nNéhány szabad domainnév, ami az Öné lehet:\n"
+        text_body += ("\n\nNéhány szabad domain név, ami az Öné lehet:\n"
                       + "\n".join(f"  ✓ {d}" for d in domains)
-                      + "\n(a levél írásakor ezek a domainek szabadok voltak)")
+                      + "\n(ezek a domain nevek a levél írásakor szabadnak tűntek)")
     text_body += FOOTER
 
     msg = EmailMessage()
