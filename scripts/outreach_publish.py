@@ -95,10 +95,10 @@ PORTFOLIO_URL = "https://attila-hartmann.github.io/attila-website/?lang=hu"
 LINKEDIN_URL = "https://www.linkedin.com/in/attila-hartmann-b7b41a24b/"
 # Static value-props shown under the CTA (ownership / no-lock-in emphasized).
 PITCH_BULLETS = [
-    ("🎨", "Teljesen egyedi, mobilbarát weboldal — az Ön arculatára szabva"),
-    ("🔑", "<strong>A domain, a tárhely és a forráskód is az Öné</strong> — nem függ a fejlesztőtől"),
-    ("💰", "Átlátható, megfizethető árazás — rejtett költségek nélkül"),
-    ("⚡", "Gyors elkészítés, és utána is elérhető vagyok, ha bármit módosítani kell"),
+    ("🎨", "<strong>Egyedi, mobilbarát weboldal</strong> — az Önök arculatára szabva, hogy bizalmat keltsen már az első látogatáskor"),
+    ("🔑", "<strong>A domain, a tárhely és a weboldal teljes egészében az Önök tulajdona</strong> — nincsek kiszolgáltatva egy fejlesztőnek"),
+    ("💰", "<strong>Átlátható árazás, egyszeri díj</strong> — rejtett költségek és kellemetlen meglepetések nélkül"),
+    ("⚡", "<strong>Gyors elkészítés és hosszú távú támogatás</strong> — ha később módosításra vagy segítségre van szükség, továbbra is számíthatnak rám"),
 ]
 
 
@@ -188,7 +188,7 @@ def _pitch_card(accent):
         f'style="background:#f7f4ef;border-left:3px solid {accent};border-radius:10px;"><tr>'
         f'<td style="padding:18px 22px;">'
         f'<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:15px;font-weight:bold;'
-        f'color:#33312e;margin-bottom:12px;">Amit kapna, ha együtt dolgozunk:</div>'
+        f'color:#33312e;margin-bottom:12px;">Ha együtt dolgoznánk, erre számíthatnának:</div>'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
         f'</td></tr></table></td></tr>'
     )
