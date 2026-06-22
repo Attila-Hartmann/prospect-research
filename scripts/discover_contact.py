@@ -81,16 +81,15 @@ def derive_stems(name, city):
 
 
 def _resolves(fqdn):
-    """DNS-over-HTTPS: does the domain have NS/SOA records (i.e. is it registered/live)?"""
-    for rtype in ("NS", "A"):
+    """Does the domain resolve (apex or www has an A record)? Uses the system
+    resolver — works in the cloud sandbox where DoH/HTTP egress is blocked."""
+    for host in (fqdn, "www." + fqdn):
         try:
-            j = requests.get("https://dns.google/resolve",
-                             params={"name": fqdn, "type": rtype}, timeout=8).json()
-        except (requests.RequestException, ValueError):
-            return False
-        if j.get("Status") == 0 and j.get("Answer"):
+            socket.getaddrinfo(host, None)
             return True
-        if j.get("Status") == 3:  # NXDOMAIN
+        except socket.gaierror:
+            continue
+        except Exception:
             return False
     return False
 
@@ -187,6 +186,11 @@ def discover(name, city, known_site=""):
         checked.append(fqdn)
         status, text = fetch("https://" + fqdn)
         if not text or not _page_belongs(text, name, city, distinctive):
+            # Cloud: the page can't be fetched (egress allowlist). A distinctive
+            # brand-exact domain that resolves is still almost certainly their site.
+            if distinctive:
+                return {"site": "https://" + fqdn, "email": "", "email_source": "",
+                        "notes": f"él? weboldal: https://{fqdn} (tartalom nem elérhető a sandboxból)"}
             continue
         site = "https://" + fqdn
         emails = extract_emails(text, prefer_domain=fqdn)

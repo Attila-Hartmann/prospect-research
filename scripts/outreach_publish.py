@@ -113,15 +113,14 @@ CLOSING = ("Ha úgy érzik, hogy egy modernebb online megjelenés hasznos lenne 
            "beszélni az elképzeléseiket és a lehetőségeket. Ha most nem aktuális, természetesen "
            "nem szükséges reagálniuk.")
 
-# Domain-suggestion settings. .com/.net are verified authoritatively via free
-# Verisign RDAP. .hu has no free RDAP (and WhoisJSON returns a generic "ACTIVE"
-# stub for every .hu, so it can't tell free from taken) — so .hu is checked via
-# DNS-over-HTTPS: no NS/SOA records => the name isn't delegated => almost
-# certainly unregistered. Both paths are HTTPS-only (cloud-safe) and need no key.
+# Domain-suggestion settings. Availability is checked with the SYSTEM DNS RESOLVER
+# (socket.getaddrinfo), NOT an HTTP API: the cloud sandbox's egress allowlist blocks
+# RDAP/DoH/whois endpoints (rdap.verisign.com, dns.google, ...) but the resolver works.
+# A name that resolves (apex or www has an A record) is taken; one that fails to
+# resolve has no DNS at all => almost certainly unregistered (free).
 DOMAIN_TLDS = ["hu", "com"]      # priority order: .hu first (HU SMBs want it), then .com
 MAX_DOMAIN_OPTIONS = 3           # show at most this many free domains
 MAX_DOMAIN_LOOKUPS = 10          # cap availability checks per business
-_RDAP_TLDS = {"com", "net"}      # free, authoritative Verisign RDAP coverage
 
 
 # ---------------------------------------------------------------- pages repo ---
@@ -216,42 +215,27 @@ def _pitch_card(accent):
     )
 
 
-def _doh_registered(fqdn):
-    """DNS-over-HTTPS lookup. True = has NS/SOA (registered/delegated),
-    False = NXDOMAIN (not in DNS => unregistered), None = ambiguous (e.g. SERVFAIL).
-    Google DoH Status: 0=NOERROR, 2=SERVFAIL, 3=NXDOMAIN."""
-    for rtype in ("NS", "SOA"):
+def _has_dns(fqdn):
+    """True = resolves (apex or www has an A record) => registered/in use.
+    False = neither resolves (NXDOMAIN) => almost certainly unregistered.
+    None = resolver error. Uses the system resolver, which works in the cloud
+    sandbox even though outbound HTTP to RDAP/DoH is blocked by the allowlist."""
+    err = False
+    for host in (fqdn, "www." + fqdn):
         try:
-            j = requests.get("https://dns.google/resolve",
-                             params={"name": fqdn, "type": rtype}, timeout=8).json()
-        except (requests.RequestException, ValueError):
-            return None
-        status = j.get("Status")
-        if status == 0 and j.get("Answer"):
-            return True            # delegated -> registered
-        if status == 3:
-            return False           # NXDOMAIN -> unregistered
-        # status 2 / NOERROR-without-answer -> inconclusive, try the next record type
-    return None
+            socket.getaddrinfo(host, None)
+            return True
+        except socket.gaierror:
+            continue                       # this name has no A record
+        except Exception:
+            err = True                     # transient resolver failure
+    return None if err else False
 
 
 def domain_is_free(fqdn):
-    """True = available, False = taken, None = unknown. NEVER claim free on None.
-    .com/.net via free Verisign RDAP (authoritative); .hu (+ other ccTLDs) via
-    DNS-over-HTTPS (no NS/SOA => almost certainly unregistered)."""
-    tld = fqdn.rsplit(".", 1)[-1].lower()
-    if tld in _RDAP_TLDS:
-        try:
-            r = requests.get(f"https://rdap.verisign.com/{tld}/v1/domain/{fqdn}", timeout=8)
-            if r.status_code == 404:
-                return True
-            if r.status_code == 200:
-                return False
-            return None
-        except requests.RequestException:
-            return None
-    reg = _doh_registered(fqdn)
-    return None if reg is None else (not reg)
+    """True = available, False = taken, None = unknown. NEVER claim free on None."""
+    has = _has_dns(fqdn)
+    return None if has is None else (not has)
 
 
 def select_free_domains(stems):
