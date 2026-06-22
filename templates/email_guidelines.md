@@ -13,7 +13,8 @@ offering to help a business with a great reputation but no proper website.
   not Angular/framework talk.
 - Build rapport with a **specific, true** detail (their real Google rating /
   review count, their town, their field). Never invent facts.
-- 110–170 words in the body (before the link and footer). Skimmable.
+- 60–110 words in the body — ONLY the opener, the gap, and the benefits (everything
+  after that is added automatically by the script). Skimmable.
 
 ## Structure of the body
 1. **Personal opener** — name the business + an honest compliment grounded in
@@ -25,14 +26,12 @@ offering to help a business with a great reputation but no proper website.
 3. **2–3 concrete 2026 benefits** (pick what fits the industry): megjelenés a
    Google-keresésben, 0–24 elérhetőség, online időpontfoglalás, hitelesség a
    versenytársakkal szemben, mobilbarát bemutatkozás.
-4. **The offer** — you already made them a *free, no-obligation sample page* and
-   put the link in. Insert the literal token `{{SAMPLE_PAGE_URL}}` on its own
-   line where the link should appear (the publish script swaps in the real URL).
-5. **Soft CTA** — offer a short, no-pressure 15-minute chat / reply if it's of
-   interest; make clear there's no obligation.
-
-> Do **NOT** write a signature or opt-out line — the publish script appends a
-> standardized footer automatically (see below). End the body after the CTA.
+**STOP after the benefits.** Do **NOT** write the sentence that introduces the sample
+page, do **NOT** include any link or the `{{SAMPLE_PAGE_URL}}` token, and do **NOT**
+write a closing call-to-action or a sign-off. The publish script adds — automatically and
+identically on every e-mail — a fixed sample-page introduction, the sample-page button,
+the value-proposition + free-domain cards, a fixed closing paragraph, and the footer.
+Your `body` is ONLY: the personal opener, the gap, and the 2–3 concrete benefits.
 
 ## Subject line
 - Per-business and specific; never identical across e-mails. Calm, not clickbait.
@@ -46,7 +45,7 @@ offering to help a business with a great reputation but no proper website.
   "email_address": "info@pelda.hu",        // "" if none could be found
   "email_source": "facebook",              // facebook|instagram|websearch|manual|""
   "subject": "…",
-  "body": "…multi-line Hungarian text, contains the {{SAMPLE_PAGE_URL}} token…",
+  "body": "…personal opener + the gap + 2–3 benefits ONLY (no link, no token, no closing)…",
   "notes": "FB About oldalon találtam / nem volt e-mail, csak telefon",
   "domain_candidates": ["kovacsfogaszat", "drkovacs", "kovacsfogaszatbudapest", "kovacsdental"]
 }
@@ -80,14 +79,14 @@ Tisztelt Kovács Fogászat!
 Rákerestem Önökre, és a 4,8 csillagos, 132 értékelésből álló Google-profil
 alapján látszik, hogy sok páciens elégedett a rendelőjük szolgáltatásaival.
 
-Egy dolog viszont feltűnt: nincsen saját weboldaluk. A legtöbb új vendég ma már online tájékozódik, mielőtt időpontot foglal. Egy modern weboldal segíthet abban, hogy könnyebben megtalálják Önöket, és nagyobb bizalommal jelentkezzenek be.
+Egy dolog viszont feltűnt: nincsen saját weboldaluk. A legtöbb új vendég ma már
+online tájékozódik, mielőtt időpontot foglal – saját oldal nélkül viszont könnyen
+egy versenytársnál köt ki.
 
-Egy egyszerű, mobilra optimalizált weboldal segíthetne Önöknek abban, hogy megjelenjenek a Google-keresésekben és így a páciensek könnyebben megtalálják Önöket, gyorsan áttekinthetőek legyenek a szolgáltatások, és az érdeklődők egyszerűbben kapcsolatba léphessenek Önökkel.
-
-Hogy ne csak beszéljek róla, készítettem Önöknek egy ingyenes mintaoldalt, hogy lássák, hogyan nézhetne ki egy modern weboldal az Önök számára – itt
-megnézhetik, kötelezettség nélkül:
-
-{{SAMPLE_PAGE_URL}}
-
-Ha úgy érzik, hogy egy modernebb online megjelenés hasznos lenne a vállalkozásuk számára, kérem válaszoljanak erre az e-mailre, és szívesen megmutatom, hogy milyen lehetőségeket látok. Egy rövid, kötelezettségmentes konzultáció keretében át tudjuk beszélni az elképzeléseiket és a lehetőségeket. Ha most nem aktuális, természetesen nem szükséges reagálniuk.
+Egy egyszerű, mobilra optimalizált weboldal sokat segítene: megjelennének a
+Google-keresésben, a szolgáltatások gyorsan áttekinthetőek lennének, és az
+érdeklődők bármikor könnyen kapcsolatba léphetnének Önökkel.
 ```
+The body STOPS here. The publish script then automatically appends — identically on
+every e-mail — the fixed sample-page introduction, the "Megnézem a mintaoldalt" button,
+the value + free-domain cards, the fixed closing paragraph, and the footer.

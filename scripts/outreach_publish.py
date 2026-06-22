@@ -101,6 +101,18 @@ PITCH_BULLETS = [
     ("⚡", "<strong>Gyors elkészítés és hosszú távú támogatás</strong> — ha később módosításra vagy segítségre van szükség, továbbra is számíthatnak rám"),
 ]
 
+# Fixed paragraphs the script always inserts (NOT agent-generated): the intro just
+# above the CTA button, and the closing just above the footer. The agent writes only
+# the personalized opener+gap+benefits; these stay identical on every e-mail.
+SAMPLE_INTRO = ("Hogy ne csak beszéljek róla, készítettem Önöknek egy ingyenes mintaoldalt, hogy "
+                "lássák, hogyan nézhetne ki egy modern weboldal az Önök számára – itt megnézhetik, "
+                "kötelezettség nélkül:")
+CLOSING = ("Ha úgy érzik, hogy egy modernebb online megjelenés hasznos lenne a vállalkozásuk "
+           "számára, kérem válaszoljanak erre az e-mailre, és szívesen megmutatom, hogy milyen "
+           "lehetőségeket látok. Egy rövid, kötelezettségmentes konzultáció keretében át tudjuk "
+           "beszélni az elképzeléseiket és a lehetőségeket. Ha most nem aktuális, természetesen "
+           "nem szükséges reagálniuk.")
+
 # Domain-suggestion settings. .com/.net are verified authoritatively via free
 # Verisign RDAP. .hu has no free RDAP (and WhoisJSON returns a generic "ACTIVE"
 # stub for every .hu, so it can't tell free from taken) — so .hu is checked via
@@ -316,10 +328,20 @@ def _domain_card(accent, domains):
     )
 
 
+def _strip_fixed(body, sample_url):
+    """The personalized part only: drop the link token/URL and any echo of the fixed
+    intro/closing the agent may have copied from the guidelines example."""
+    before = (body or "").partition("{{SAMPLE_PAGE_URL}}")[0]
+    for fixed in (SAMPLE_INTRO, CLOSING):
+        before = before.replace(fixed, "")
+    return before.replace(sample_url, "").strip()
+
+
 def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, domains=None):
     """Email-safe HTML (600px table, inline CSS, web-safe fonts, bulletproof button).
-    The body is split on the {{SAMPLE_PAGE_URL}} token; the button takes its place."""
-    before, _, after = body.partition("{{SAMPLE_PAGE_URL}}")
+    The agent writes only the personalized opener+gap+benefits; the sample-page intro,
+    the CTA button, the value/domain cards and the closing are fixed and added here."""
+    before = _strip_fixed(body, sample_url)
     banner_row = (
         f'<tr><td style="padding:0;"><img src="{banner_url}" width="600" alt="" '
         f'style="display:block;width:100%;max-width:600px;height:auto;border:0;"></td></tr>'
@@ -332,10 +354,13 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, 
         '<span style="display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;'
         'background:rgba(255,255,255,.2);border-radius:50%;font-size:12px;margin-right:9px;vertical-align:middle;">HA</span>'
     )
-    after_row = (
-        f'<tr><td style="padding:6px 28px 8px;color:#33312e;font-size:16px;line-height:1.6;'
-        f'font-family:Arial,Helvetica,sans-serif;">{_paragraphs(after)}</td></tr>'
-        if after.strip() else ""
+    intro_row = (
+        f'<tr><td style="padding:4px 28px 2px;color:#33312e;font-size:16px;line-height:1.6;'
+        f'font-family:Arial,Helvetica,sans-serif;">{_paragraphs(SAMPLE_INTRO)}</td></tr>'
+    )
+    closing_row = (
+        f'<tr><td style="padding:10px 28px 6px;color:#33312e;font-size:16px;line-height:1.6;'
+        f'font-family:Arial,Helvetica,sans-serif;">{_paragraphs(CLOSING)}</td></tr>'
     )
     return f"""<!doctype html><html lang="hu"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -357,6 +382,7 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, 
     </tr></table></td></tr>
   {banner_row}
   <tr><td style="padding:30px 28px 6px;color:#33312e;font-size:16px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">{_paragraphs(before, first_bold=True)}</td></tr>
+  {intro_row}
   <tr><td align="center" style="padding:12px 28px 18px;">
     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
       <td style="border-radius:10px;background:{accent};">
@@ -364,7 +390,7 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, 
       </td></tr></table></td></tr>
   {_pitch_card(accent)}
   {_domain_card(accent, domains or [])}
-  {after_row}
+  {closing_row}
   <tr><td style="padding:22px 28px;background:#faf8f4;border-top:1px solid #eee7db;color:#8a857c;font-size:13px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">
     <strong style="color:#33312e;">Hartmann Attila</strong> · webfejlesztő<br>
     ✉ <a href="mailto:{GMAIL_ADDRESS}" style="color:{accent};text-decoration:none;">{GMAIL_ADDRESS}</a>
@@ -379,16 +405,15 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, 
 
 def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT,
                   banner_url=None, domains=None):
-    # plain-text part (fallback + deliverability)
-    if "{{SAMPLE_PAGE_URL}}" in body:
-        text_body = body.replace("{{SAMPLE_PAGE_URL}}", sample_url)
-    else:
-        text_body = body.rstrip() + f"\n\nMintaoldal: {sample_url}"
+    # plain-text part (fallback + deliverability) — mirrors the HTML order:
+    # personalized body, fixed intro, sample link, domain options, fixed closing, footer.
+    text_body = _strip_fixed(body, sample_url)
+    text_body += "\n\n" + SAMPLE_INTRO + "\n\n" + sample_url
     if domains:
         text_body += ("\n\nNéhány szabad domain név, ami az Öné lehet:\n"
                       + "\n".join(f"  ✓ {d}" for d in domains)
                       + "\n(ezek a domain nevek a levél írásakor szabadnak tűntek)")
-    text_body += FOOTER
+    text_body += "\n\n" + CLOSING + FOOTER
 
     msg = EmailMessage()
     msg["From"] = SENDER
