@@ -66,7 +66,7 @@ offering to help a business with a great reputation but no proper website.
 ```
 —
 Hartmann Attila · webfejlesztő
-✉ {GMAIL_ADDRESS}   ·   Portfólió: https://attila-hartmann.github.io/attila-website/?lang=hu
+✉ {GMAIL_ADDRESS}   ·   Weboldal: https://attila-hartmann.github.io/attila-website/?lang=hu
 LinkedIn: https://www.linkedin.com/in/attila-hartmann-b7b41a24b/
 
 Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz.
