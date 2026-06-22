@@ -304,7 +304,7 @@ def _domain_card(accent, domains):
         f'style="background:#f7f4ef;border-left:3px solid {accent};border-radius:10px;"><tr>'
         f'<td style="padding:18px 22px;">'
         f'<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:15px;font-weight:bold;'
-        f'color:#33312e;margin-bottom:12px;">Néhány szabad domain név, ami az Öné lehet:</div>'
+        f'color:#33312e;margin-bottom:12px;">Néhány szabad domain név, ami az Önöké lehetne:</div>'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
         f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#a9a399;margin-top:10px;">'
         f'(ezek a domain nevek a levél írásakor szabadnak tűntek)</div>'
@@ -394,7 +394,7 @@ def build_message(to_addr, subject, body, sample_url, accent=DEFAULT_ACCENT,
     text_body = _strip_fixed(body, sample_url)
     text_body += "\n\n" + SAMPLE_INTRO + "\n\n" + sample_url
     if domains:
-        text_body += ("\n\nNéhány szabad domain név, ami az Öné lehet:\n"
+        text_body += ("\n\nNéhány szabad domain név, ami az Önöké lehetne:\n"
                       + "\n".join(f"  ✓ {d}" for d in domains)
                       + "\n(ezek a domain nevek a levél írásakor szabadnak tűntek)")
     text_body += "\n\n" + CLOSING + FOOTER
