@@ -7,7 +7,7 @@ Inputs: .tmp/prepared/<place_id>/{email.json[, index.html]} produced by the agen
 
 For each prepared business:
   - no email_address  -> mark row `no_email`, skip (no page, no draft).
-  - email_address set -> publish index.html to the GitHub Pages repo, build the
+  - email_address set -> publish index.html to the GitHub Pages repo, build thef
     final e-mail (insert sample link + append the standard footer), then via the
     Gmail REST API (HTTPS — the cloud sandbox blocks IMAP/SMTP ports):
         SEND_MODE=draft -> users.drafts.create (review & send by hand)
@@ -80,7 +80,7 @@ OUTREACH_COLS = [
 FOOTER = (
     "\n\n—\n"
     "Hartmann Attila · webfejlesztő\n"
-    f"✉ {GMAIL_ADDRESS}   ·   Portfólió: https://attila-hartmann.github.io/attila-website/?lang=hu\n"
+    f"✉ {GMAIL_ADDRESS}   ·   Weboldal: https://attila-hartmann.github.io/attila-website/?lang=hu\n"
     "LinkedIn: https://www.linkedin.com/in/attila-hartmann-b7b41a24b/\n\n"
     "Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz. "
     "Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”."
@@ -368,7 +368,7 @@ def render_email_html(body, sample_url, accent=DEFAULT_ACCENT, banner_url=None, 
   <tr><td style="padding:22px 28px;background:#faf8f4;border-top:1px solid #eee7db;color:#8a857c;font-size:13px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">
     <strong style="color:#33312e;">Hartmann Attila</strong> · webfejlesztő<br>
     ✉ <a href="mailto:{GMAIL_ADDRESS}" style="color:{accent};text-decoration:none;">{GMAIL_ADDRESS}</a>
-    &nbsp;·&nbsp; <a href="https://attila-hartmann.github.io/attila-website/?lang=hu" style="color:{accent};text-decoration:none;">Portfólió</a>
+    &nbsp;·&nbsp; <a href="https://attila-hartmann.github.io/attila-website/?lang=hu" style="color:{accent};text-decoration:none;">Weboldal</a>
     &nbsp;·&nbsp; <a href="https://www.linkedin.com/in/attila-hartmann-b7b41a24b/" style="color:{accent};text-decoration:none;">LinkedIn</a>
     <br><br><span style="color:#a9a399;font-size:12px;">Ezt a levelet azért kapta, mert nyilvánosan elérhető céges elérhetőséget találtam Önökhöz. Ha nem kíván több ilyen levelet kapni, válaszoljon ennyivel: „leiratkozás”.</span>
   </td></tr>
