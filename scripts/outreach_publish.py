@@ -146,6 +146,17 @@ def clone_pages_repo():
     git("config", "user.name", "Attila Outreach Agent")
 
 
+def _strip_instruction_comment(html):
+    """Remove the template's leading instruction comment (the <!-- … {{TOKEN}} … -->
+    block) so the agent's fill instructions / leftover example tokens never leak into
+    a published page's source. Deterministic safety net independent of the agent."""
+    import re as _re
+    m = _re.search(r"<!--.*?-->", html or "", _re.S)
+    if m and ("Replace every" in m.group(0) or "PREMIUM SAMPLE" in m.group(0) or "{{" in m.group(0)):
+        return (html[:m.start()] + html[m.end():]).lstrip("\n")
+    return html
+
+
 _GCS_SCOPE = "https://www.googleapis.com/auth/devstorage.read_write"
 
 
@@ -165,7 +176,7 @@ def gcs_upload(place_id, html):
         headers={"Authorization": f"Bearer {creds.token}",
                  "Content-Type": "text/html; charset=utf-8",
                  "Cache-Control": "public, max-age=300"},
-        data=html.encode("utf-8"), timeout=60,
+        data=_strip_instruction_comment(html).encode("utf-8"), timeout=60,
     )
     if not r.ok:
         raise RuntimeError(f"GCS upload {name} -> {r.status_code}: {r.text[:300]}")
@@ -178,7 +189,7 @@ def stage_page(place_id, index_html_path):
     with open(index_html_path, "r", encoding="utf-8") as src:
         html = src.read()
     with open(os.path.join(dest_dir, "index.html"), "w", encoding="utf-8") as dst:
-        dst.write(html)
+        dst.write(_strip_instruction_comment(html))
     return f"{PAGES_BASE_URL}/{place_id}/"
 
 
