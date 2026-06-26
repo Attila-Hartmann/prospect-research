@@ -69,10 +69,12 @@ PAGES_REPO_URL = os.getenv("PAGES_REPO_URL", "")                 # https with to
 PAGES_BASE_URL = os.getenv("PAGES_BASE_URL", "").rstrip("/")     # public github.io base
 PREPARED_DIR = os.getenv("PREPARED_DIR", ".tmp/prepared")
 PAGES_CLONE = ".tmp/pages_repo"
-# When set, publish pages to this public Google Cloud Storage bucket instead of
-# pushing to GitHub Pages. The cloud egress blocks `git push` to github.com (403)
-# but allows storage.googleapis.com, and the service account can write objects.
-GCS_BUCKET = os.getenv("GCS_BUCKET", "").strip()
+# Publish pages to this public Google Cloud Storage bucket instead of pushing to
+# GitHub Pages: the cloud egress blocks `git push` to github.com (403) but allows
+# storage.googleapis.com, and the service account can write objects. Defaults to the
+# live bucket so cloud runs work without extra config; set GCS_BUCKET="" to force the
+# legacy GitHub-Pages git push instead.
+GCS_BUCKET = os.getenv("GCS_BUCKET", "attila-landing-samples").strip()
 
 SENDER = f"Hartmann Attila <{GMAIL_ADDRESS}>"
 
