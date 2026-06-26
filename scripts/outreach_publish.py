@@ -69,6 +69,10 @@ PAGES_REPO_URL = os.getenv("PAGES_REPO_URL", "")                 # https with to
 PAGES_BASE_URL = os.getenv("PAGES_BASE_URL", "").rstrip("/")     # public github.io base
 PREPARED_DIR = os.getenv("PREPARED_DIR", ".tmp/prepared")
 PAGES_CLONE = ".tmp/pages_repo"
+# When set, publish pages to this public Google Cloud Storage bucket instead of
+# pushing to GitHub Pages. The cloud egress blocks `git push` to github.com (403)
+# but allows storage.googleapis.com, and the service account can write objects.
+GCS_BUCKET = os.getenv("GCS_BUCKET", "").strip()
 
 SENDER = f"Hartmann Attila <{GMAIL_ADDRESS}>"
 
@@ -138,6 +142,32 @@ def clone_pages_repo():
                    check=True, capture_output=True, text=True)
     git("config", "user.email", "outreach-agent@attila.web")
     git("config", "user.name", "Attila Outreach Agent")
+
+
+_GCS_SCOPE = "https://www.googleapis.com/auth/devstorage.read_write"
+
+
+def gcs_upload(place_id, html):
+    """Upload <place_id>/index.html to the public GCS bucket; return its public URL.
+    Uses the service account over storage.googleapis.com (reachable from the cloud,
+    unlike `git push` to github.com). Public read is granted by bucket IAM
+    (allUsers → Storage Object Viewer), so no per-object ACL is needed."""
+    from google.oauth2 import service_account
+    creds = service_account.Credentials.from_service_account_file(
+        os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "service_account.json"), scopes=[_GCS_SCOPE])
+    creds.refresh(GoogleAuthRequest())
+    name = f"{place_id}/index.html"
+    r = requests.post(
+        f"https://storage.googleapis.com/upload/storage/v1/b/{GCS_BUCKET}/o",
+        params={"uploadType": "media", "name": name},
+        headers={"Authorization": f"Bearer {creds.token}",
+                 "Content-Type": "text/html; charset=utf-8",
+                 "Cache-Control": "public, max-age=300"},
+        data=html.encode("utf-8"), timeout=60,
+    )
+    if not r.ok:
+        raise RuntimeError(f"GCS upload {name} -> {r.status_code}: {r.text[:300]}")
+    return f"https://storage.googleapis.com/{GCS_BUCKET}/{name}"
 
 
 def stage_page(place_id, index_html_path):
@@ -571,7 +601,9 @@ def main():
             sendable.append(e)
 
     # Publish pages for sendable (up to cap), then draft/send.
-    clone_pages_repo()
+    use_gcs = bool(GCS_BUCKET)            # GCS in the cloud (github push is blocked); git locally
+    if not use_gcs:
+        clone_pages_repo()
     capped = sendable[:DAILY_CAP]
     leftover = sendable[DAILY_CAP:]
     if leftover:
@@ -583,9 +615,15 @@ def main():
         if not os.path.isfile(page):
             e["_skip"] = "missing index.html"
             continue
-        e["_url"] = stage_page(e["place_id"], page)
+        if use_gcs:
+            with open(page, encoding="utf-8") as f:
+                e["_url"] = gcs_upload(e["place_id"], f.read())
+        else:
+            e["_url"] = stage_page(e["place_id"], page)
         staged += 1
-    if staged:
+    if staged and use_gcs:
+        print(f"Uploaded {staged} page(s) to GCS bucket '{GCS_BUCKET}'.")
+    elif staged:
         push_pages(staged)
 
     token = gmail_access_token()  # one access token for the whole batch
