@@ -502,6 +502,19 @@ def writeback(ws, colmap, rowmap, results):
         print(f"Wrote back {len(results)} rows ({len(batch)} cells).")
 
 
+def load_email_json(path):
+    """Read an agent-written email.json, self-healing the recurring bug where a
+    Hungarian „…" quote's closing mark was written as an ASCII " (U+0022) inside a
+    JSON string, prematurely ending it and raising JSONDecodeError."""
+    with open(path, encoding="utf-8") as f:
+        raw = f.read()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        repaired = re.sub(r'„([^"„\n]*?)"(?!\s*[:,}\]])', r'„\1”', raw)
+        return json.loads(repaired)  # raises again only if it's a different problem
+
+
 def load_queue_map():
     """place_id -> business record from .tmp/queue.json (for fallback domain stems)."""
     qpath = os.path.join(os.path.dirname(PREPARED_DIR) or ".", "queue.json")
@@ -532,8 +545,17 @@ def main():
         ejson = os.path.join(d, "email.json")
         if not os.path.isfile(ejson):
             continue
-        with open(ejson, encoding="utf-8") as f:
-            e = json.load(f)
+        try:
+            e = load_email_json(ejson)
+        except Exception as exc:  # one malformed file must not abort the whole run
+            print(f"  ERROR parsing {ejson}: {exc}", file=sys.stderr)
+            results.append({
+                "place_id": os.path.basename(d), "outreach_status": "error",
+                "email_address": "", "email_source": "", "sample_page_url": "",
+                "outreach_date": today, "outreach_notes": f"email.json parse hiba: {exc}",
+                "suggested_domains": "",
+            })
+            continue
         pid = str(e.get("place_id", os.path.basename(d)))
         if not e.get("email_address"):
             results.append({
