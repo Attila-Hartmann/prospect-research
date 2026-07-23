@@ -108,6 +108,9 @@ def update_sheet(json_file, sheet_name=None, append=False):
                     next_row = len(existing) + 2  # +1 for header row, +1 for 1-based index
                     new_data = new_df.values.tolist()
                     end_col = col_index_to_letter(len(new_df.columns) - 1)
+                    needed_rows = next_row + len(new_data) - 1
+                    if needed_rows > ws.row_count:
+                        ws.resize(rows=needed_rows + 100)
                     ws.update(
                         values=new_data,
                         range_name=f"A{next_row}:{end_col}{next_row + len(new_data) - 1}",
