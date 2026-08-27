@@ -11,23 +11,32 @@
 
   (1) {{THEME}} — pick ONE palette keyword by industry:
         warm  -> étterem, bisztró, pizzéria, büfé, vendéglő
-        luxe  -> fine dining / kávézó-cukrászda / prémium
-        fresh -> fogászat, állatorvos, optika, rendelő, általános/iroda (default)
-        sage  -> gyógyszertár, állatpatika, wellness, egészség
+        luxe  -> fine dining / kávézó-cukrészda / prémium, ügyvéd (jogi iroda)
+        fresh -> fogászat, állatorvos, optika, rendelő, könyvelő, általános/iroda (default)
+        sage  -> gyógyszertár, állatpatika, wellness, egészség, ingatlaniroda
         rose  -> fodrász, szépségszalon, kozmetika, köröm, masszázs
+        slate -> építőipari kivitelező, autószerelő (ipari/szakipari vállalkozások)
   (2) {{HERO_IMG}} / {{IMG_A}} / {{IMG_B}} — choose the matching industry set from
       this VERIFIED royalty-free library (Unsplash; hero=wide, a/b=support):
         vet:       hero 1583337130417-3346a1be7dee  a 1576201836106-db1758fd1c97  b 1559190394-df5a28aab5c5
         restaurant:hero 1517248135467-4c7edcad34c4  a 1414235077428-338989a2e8c0  b 1555396273-367ea4eb4db5
         cafe:      hero 1554118811-1e0d58224f24      a 1495474472287-4d71bcdd2085  b 1509042239860-f550ce710b93
         beauty:    hero 1560066984-138dadb4c035      a 1521590832167-7bcbfaa6381f  b 1562322140-8baeececf3df
+        hair:      hero 1781450090585-1a511b7066d9   a 1759134198561-e2041049419c  b 1695527081848-1e46c06e6458
         dental:    hero 1606811841689-23dfddce3e95   a 1588776814546-1ffcf47267a5  b 1609840114035-3c981b782dfe
         pharmacy:  hero 1587854692152-cbe660dbde88   a 1576602976047-174e57a47881  b 1471864190281-a93a3070b6de
+        lawyer:    hero 1505664194779-8beaceb93744   a 1755551636821-01c102d8349e  b 1751028582717-4e19c689c928
+        mechanic:  hero 1619642751034-765dfdf7c58e   a 1711386689622-1cda23e10217  b 1723099971299-3789db53604c
+        construction: hero 1504307651254-35680f356dfd  a 1640101086894-7d70c3e70179  b 1664662566501-73a7e41d8c19
+        realestate:hero 1560518883-ce09059eeffa      a 1763441344610-9c0946421fb2   b 1626178793926-22b28830aa30
+        accountant:hero 1713947503588-8ff8196dc4a3   a 1713461983836-de0a45009424   b 1706169582307-8ae586631e8a
         generic:   hero 1556742049-0cfed4f6a45d      a 1441986300917-64674bd600d8  b 1497366754035-f200968a6e72
       Build each URL as:  https://images.unsplash.com/photo-<ID>?auto=format&fit=crop&w=1600&q=70  (hero)
-      and  ...&w=900&q=70  for IMG_A / IMG_B.  Use the closest set if the industry isn't listed.
+      and  ...&w=900&q=70  for IMG_A / IMG_B.  Use the "hair" set for fodrász (NOT "beauty" — they're
+      now distinct); use the "generic" set only if truly nothing else fits — it should be rare.
   (3) {{MONOGRAM}} — 1–2 uppercase letters from the name.  {{HERO_GLYPH}} — one tasteful emoji
-      (🐾 vet, 🍽️ restaurant, ☕ cafe, 💇 hair, 💅 beauty, 🦷 dental, 💊 pharmacy).
+      (🐾 vet, 🍽️ restaurant, ☕ cafe, 💇 hair, 💅 beauty, 🦷 dental, 💊 pharmacy, ⚖️ lawyer,
+      🔧 mechanic, 🏗️ construction, 🏠 real estate, 📊 accountant).
   (4) {{HERO_HEADLINE}} — 3–6 words, MUST wrap one word in <em>…</em> (renders as the italic serif accent).
   (5) {{RATING}} (e.g. 4.8) and {{REVIEW_COUNT}} (e.g. 404) are numbers used by the count-up.
       If review_count == 0: delete the whole <aside class="statcard">…</aside> block and the
@@ -66,6 +75,7 @@
   body[data-theme="fresh"]{--accent:#2F6F5E;--accent2:#3B6FB0;--dark:#0F172A;--bg:#FBFBFB;--ink:#0F172A;--muted:#5A6678}
   body[data-theme="sage"]{--accent:#4A7355;--accent2:#A6823F;--dark:#1B241D;--bg:#F4F2EA;--ink:#1A211C;--muted:#6B7268}
   body[data-theme="rose"]{--accent:#B85C6E;--accent2:#7FA99B;--dark:#2A2125;--bg:#FAF6F2;--ink:#332B2E;--muted:#8C7D80}
+  body[data-theme="slate"]{--accent:#5B6B73;--accent2:#C97A3D;--dark:#1C2226;--bg:#F3F2EE;--ink:#1E2226;--muted:#6B7278}
 
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
@@ -103,7 +113,8 @@
   /* ---- hero ------------------------------------------------------------- */
   .hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;overflow:hidden;color:#fff}
   .hero-bg{position:absolute;inset:-12% 0;background-size:cover;background-position:center;will-change:transform;
-    transform:scale(1.05)}
+    transform:scale(1.05);filter:grayscale(.8) contrast(1.12)}
+  .hero-bg::before{content:"";position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;opacity:.55}
   .hero-bg::after{content:"";position:absolute;inset:0;
     background:linear-gradient(180deg,rgba(0,0,0,.25) 0%,transparent 30%,color-mix(in srgb,var(--dark) 92%,transparent) 100%),
                linear-gradient(70deg,color-mix(in srgb,var(--dark) 65%,transparent),transparent 60%);
@@ -139,7 +150,9 @@
   .tile .ico{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;font-size:1.5rem;margin-bottom:auto;
     background:color-mix(in srgb,var(--accent) 14%,var(--bg));border:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}
   .tile.feature{grid-column:span 2;grid-row:span 2;color:#fff;justify-content:flex-end;position:relative;overflow:hidden;border:0;min-height:320px}
-  .tile.feature .fbg{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .9s cubic-bezier(.22,1,.36,1)}
+  .tile.feature .fbg{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .9s cubic-bezier(.22,1,.36,1);
+    filter:grayscale(.8) contrast(1.12)}
+  .tile.feature .fbg::after{content:"";position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;opacity:.5}
   .tile.feature:hover .fbg{transform:scale(1.06)}
   .tile.feature::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,color-mix(in srgb,var(--dark) 88%,transparent))}
   .tile.feature .ftxt{position:relative;z-index:2}
@@ -148,8 +161,9 @@
 
   /* about — broken grid + image clip reveal */
   .about{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,6vw,80px);align-items:center}
-  .about .imgwrap{border-radius:24px;overflow:hidden;aspect-ratio:4/5;box-shadow:0 30px 70px rgba(0,0,0,.18)}
-  .about .imgwrap img{width:100%;height:100%;object-fit:cover;will-change:transform,clip-path}
+  .about .imgwrap{position:relative;border-radius:24px;overflow:hidden;aspect-ratio:4/5;box-shadow:0 30px 70px rgba(0,0,0,.18)}
+  .about .imgwrap img{width:100%;height:100%;object-fit:cover;will-change:transform,clip-path;filter:grayscale(.8) contrast(1.12)}
+  .about .imgwrap::after{content:"";position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;opacity:.5;pointer-events:none}
   .about p{color:var(--muted);font-size:1.12rem;margin-top:18px;max-width:42ch}
 
   /* dark statement band */
