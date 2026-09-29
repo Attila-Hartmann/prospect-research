@@ -65,16 +65,15 @@ SEND_MODE = os.getenv("SEND_MODE", "draft").strip().lower()      # draft | auto
 TEST_RECIPIENT = os.getenv("TEST_RECIPIENT", "").strip()
 DAILY_CAP = int(os.getenv("DAILY_CAP", "25"))
 SHEET_NAME = os.getenv("SHEET_NAME", "Hungary Web Prospects")
-PAGES_REPO_URL = os.getenv("PAGES_REPO_URL", "")                 # https with token, pushable
+PAGES_REPO_URL = os.getenv("PAGES_REPO_URL", "")                 # plain https URL; cloud auth via GitHub connection
 PAGES_BASE_URL = os.getenv("PAGES_BASE_URL", "").rstrip("/")     # public github.io base
 PREPARED_DIR = os.getenv("PREPARED_DIR", ".tmp/prepared")
 PAGES_CLONE = ".tmp/pages_repo"
-# Publish pages to this public Google Cloud Storage bucket instead of pushing to
-# GitHub Pages: the cloud egress blocks `git push` to github.com (403) but allows
-# storage.googleapis.com, and the service account can write objects. Defaults to the
-# live bucket so cloud runs work without extra config; set GCS_BUCKET="" to force the
-# legacy GitHub-Pages git push instead.
-GCS_BUCKET = os.getenv("GCS_BUCKET", "attila-landing-samples").strip()
+# Pages are pushed to the GitHub Pages repo by default. In cloud routines the push is
+# authorised by the routine's GitHub connection, so attila-landing-samples must be
+# attached as a routine source (no token in the URL). Set GCS_BUCKET=attila-landing-samples
+# to upload to the public Google Cloud Storage bucket instead (fallback).
+GCS_BUCKET = os.getenv("GCS_BUCKET", "").strip()
 
 SENDER = f"Hartmann Attila <{GMAIL_ADDRESS}>"
 
@@ -614,7 +613,7 @@ def main():
             sendable.append(e)
 
     # Publish pages for sendable (up to cap), then draft/send.
-    use_gcs = bool(GCS_BUCKET)            # GCS in the cloud (github push is blocked); git locally
+    use_gcs = bool(GCS_BUCKET)            # GCS only when explicitly set; GitHub Pages otherwise
     if not use_gcs:
         clone_pages_repo()
     capped = sendable[:DAILY_CAP]
