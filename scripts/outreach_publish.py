@@ -573,6 +573,10 @@ def main():
         print(f"GMAIL_ADDRESS unset or GMAIL_OAUTH_FILE '{GMAIL_OAUTH_FILE}' missing.",
               file=sys.stderr)
         sys.exit(1)
+    if "--check-gmail" in sys.argv:  # cheap pre-flight, run at routine setup
+        gmail_access_token()
+        print("gmail auth OK")
+        return
 
     today = datetime.date.today().isoformat()
     queue_by_id = load_queue_map()  # business facts for fallback domain stems
@@ -612,6 +616,9 @@ def main():
             e["place_id"] = pid
             sendable.append(e)
 
+    # Auth first: a dead token must not publish pages it can't draft for.
+    token = gmail_access_token() if sendable else None
+
     # Publish pages for sendable (up to cap), then draft/send.
     use_gcs = bool(GCS_BUCKET)            # GCS only when explicitly set; GitHub Pages otherwise
     if not use_gcs:
@@ -637,8 +644,6 @@ def main():
         print(f"Uploaded {staged} page(s) to GCS bucket '{GCS_BUCKET}'.")
     elif staged:
         push_pages(staged)
-
-    token = gmail_access_token()  # one access token for the whole batch
 
     for e in capped:
         if e.get("_skip"):
